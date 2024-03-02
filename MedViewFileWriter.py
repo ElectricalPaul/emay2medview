@@ -10,6 +10,22 @@
 MedView is the name of the software that works with ChoiceMMed[TM]
 pulse oximeters.
 
+This class writes time-stamped SpO2 and BPM values to a binary file.
+Usage example:
+
+```
+with open(output_filename, "wb") as datfile:
+    with MedViewFileWriter.MedViewFileWriter(datfile) as dat:
+        # ...
+        # [magic happens here, and now ts is a date and time,
+        # and o2 and bpm have valid values]
+        # ...
+        dat.write_record(ts, o2, bpm)
+```
+When the MedViewFileWriter goes out of scope, the file will be updated
+with the count of records written to it before the file object itself
+is destructed and the file gets closed.
+
 A file starts with an ID byte (which we set to 0), and the number of
 records in 16-bit little-endian format. A file can have at most 65535
 records.
@@ -36,42 +52,41 @@ https://www.apneaboard.com/forums/Thread-python-file-converter-for-EMAY-sleep-pu
 """
 
 import logging
-import os
 import struct
 import unittest
 
 
 class MedViewFileWriter:
-    def __init__(self, fname):
+    def __init__(self, datfile):
         # Keep track of the number of records written to output file.
         self.records = 0
         # File handle for the DAT file
-        self.dat_file = None
-        # Output file name - replace the input file name's extension with "DAT"
-        basename, _ = os.path.splitext(fname)
-        self.output_file_name = basename + ".dat"
-        logging.debug(f"__init__, output_file_name = '{self.output_file_name}'")
-        self.create_output_file()
+        self.datfile = datfile
+        self.write_dat_header()
 
     def __del__(self):
-        logging.debug(f"__del__, output_file_name = '{self.output_file_name}'")
-        # Close the file if anything was written to it.
-        if self.records != 0:
-            self.close_output_file()
+        self.update_dat_header()
+        self.datfile = None
 
-    def create_output_file(self):
-        """Create an output file and write the header."""
-        logging.info(f"Create output file '{self.output_file_name}'")
-        self.dat_file = open(self.output_file_name, "wb")
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, tb):
+        self.update_dat_header()
+        self.datfile = None
+
+    def write_dat_header(self):
+        """Write the header to the DAT file."""
         # Write the header.
         # When closing the file, we will seek back and overwrite these bytes.
         line = struct.pack("@BBB", 0, 0, 0)
-        self.dat_file.write(line)
+        self.datfile.write(line)
 
-    def close_output_file(self):
-        """Update the file with the count of records and then close it."""
-        logging.debug(f"close_outut_file, records = {self.records}")
-        if self.records == 0 or self.dat_file is None:
+    def update_dat_header(self):
+        """Update the file with the count of records."""
+        logging.debug(f"update_dat_header, records = {self.records}")
+        # If nothing was written to the file, nothing to update
+        if self.records == 0 or self.datfile is None:
             logging.debug("NOP")
             return
 
@@ -81,13 +96,9 @@ class MedViewFileWriter:
 
         # Update the count of records at the start of the file.
         # seek(1) to skip the ID byte.
-        self.dat_file.seek(1)
+        self.datfile.seek(1)
         line = struct.pack("<H", self.records)
-        self.dat_file.write(line)
-
-        # Close the file.
-        self.dat_file.close()
-        self.dat_file = None
+        self.datfile.write(line)
 
     def write_record(self, timestamp, o2, bpm):
         """Write a single data record to the file.
@@ -99,23 +110,18 @@ class MedViewFileWriter:
         """
         # If we hit the maximum number of records, log an error and exit
         if self.records >= 65535:
-            self.close_output_file()
             logging.error("Maximum number of output records exceeded.")
             return
 
         try:
             o2 = int(o2)
         except:
-            raise ValueError(
-                f"Invalid SpO2 value: '{o2}', at or near record number {1+self.records+65536*self.num_files}"
-            )
+            raise ValueError(f"Invalid SpO2 value: '{o2}'")
 
         try:
             bpm = int(bpm)
         except:
-            raise ValueError(
-                f"Invalid BPM value: '{bpm}', at or near record number {1+self.records+65536*self.num_files}"
-            )
+            raise ValueError(f"Invalid BPM value: '{bpm}'")
 
         line = struct.pack(
             "@xxxBBBBBBBB",
@@ -129,7 +135,7 @@ class MedViewFileWriter:
             int(bpm),
         )
 
-        self.dat_file.write(line)
+        self.datfile.write(line)
         self.records += 1
 
 
