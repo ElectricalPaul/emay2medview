@@ -85,5 +85,5 @@ class EmayFileReader:
                 f"Invalid date/time '{date_and_time}' on line {self.reader.line_num}"
             )
             raise StopIteration
-        except AttributeError:
+        except (TypeError, AttributeError):
             raise StopIteration
