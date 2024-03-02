@@ -10,16 +10,9 @@
 MedView is the name of the software that works with ChoiceMMed[TM]
 pulse oximeters.
 
-MedView files have the same base name, plus an underscore and a
-sequence number after the first one. All files use the .DAT extension.
-So a set of related files might be named:
-    mydata.DAT
-    mydata_1.DAT
-    mydata_2.DAT
-Each file can have at most 65535 records.
-
 A file starts with an ID byte (which we set to 0), and the number of
-records in 16-bit little-endian format.
+records in 16-bit little-endian format. A file can have at most 65535
+records.
 
 Each record in the file is 11 bytes. The bytes are, in order:
     0 - purpose unknown
@@ -50,37 +43,26 @@ import unittest
 
 class MedViewFileWriter:
     def __init__(self, fname):
-        # Get the base filename by removing the extension, if any.
-        self.basename, _ = os.path.splitext(fname)
-        logging.debug(f"__init__, fname = '{fname}', basename = '{self.basename}'")
-        # Keep track of the number of output files created.
-        self.num_files = 0
-        # Keep track of the number of records written to current output file.
+        # Keep track of the number of records written to output file.
         self.records = 0
-        # File handle for current DAT file
+        # File handle for the DAT file
         self.dat_file = None
-        # List of output filenames
-        self.output_file_names = []
+        # Output file name - replace the input file name's extension with "DAT"
+        basename, _ = os.path.splitext(fname)
+        self.output_file_name = basename + ".dat"
+        logging.debug(f"__init__, output_file_name = '{self.output_file_name}'")
+        self.create_output_file()
 
     def __del__(self):
-        logging.debug(f"__del__, basename = '{self.basename}'")
+        logging.debug(f"__del__, output_file_name = '{self.output_file_name}'")
         # Close the file if anything was written to it.
         if self.records != 0:
             self.close_output_file()
 
-    def make_output_filename(self):
-        """Return an output name from the base name and how many output files exist."""
-        if self.num_files == 0:
-            return self.basename + ".dat"
-
-        return self.basename + "_" + str(self.num_files) + ".dat"
-
     def create_output_file(self):
-        """Create an output file with the "next" name and write the header."""
-        output_name = self.make_output_filename()
-        logging.info(f"Create output file '{output_name}'")
-        self.dat_file = open(output_name, "wb")
-        self.output_file_names.append(output_name)
+        """Create an output file and write the header."""
+        logging.info(f"Create output file '{self.output_file_name}'")
+        self.dat_file = open(self.output_file_name, "wb")
         # Write the header.
         # When closing the file, we will seek back and overwrite these bytes.
         line = struct.pack("@BBB", 0, 0, 0)
@@ -103,23 +85,24 @@ class MedViewFileWriter:
         line = struct.pack("<H", self.records)
         self.dat_file.write(line)
 
-        # Close the file and get ready to create the next one if needed.
+        # Close the file.
         self.dat_file.close()
         self.dat_file = None
-        self.records = 0
-        self.num_files += 1
 
     def write_record(self, timestamp, o2, bpm):
         """Write a single data record to the file.
-
-        If the output file doesn't exist, it will be created and opened first.
-        If the output file gets "full" (65535 records) after this write, it will be closed.
 
         Params:
             timestamp - a datetime.datetime object
             o2 - SpO2 percentage, represented as an integer
             bpm - BPM
         """
+        # If we hit the maximum number of records, log an error and exit
+        if self.records >= 65535:
+            self.close_output_file()
+            logging.error("Maximum number of output records exceeded.")
+            return
+
         try:
             o2 = int(o2)
         except:
@@ -133,11 +116,6 @@ class MedViewFileWriter:
             raise ValueError(
                 f"Invalid BPM value: '{bpm}', at or near record number {1+self.records+65536*self.num_files}"
             )
-
-        # Create the output file if needed.
-        if self.records == 0:
-            logging.debug("records == 0, creating output file")
-            self.create_output_file()
 
         line = struct.pack(
             "@xxxBBBBBBBB",
@@ -153,11 +131,6 @@ class MedViewFileWriter:
 
         self.dat_file.write(line)
         self.records += 1
-
-        # If we hit the maximum number of records, close the file.
-        # The next time we call write_record, it will create a new output file.
-        if self.records == 65535:
-            self.close_output_file()
 
 
 if __name__ == "__main__":
