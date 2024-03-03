@@ -103,6 +103,8 @@ class MedViewFileWriter:
     def write_record(self, timestamp, o2, bpm):
         """Write a single data record to the file.
 
+        If any of the parameters are invalid, the record will not be written.
+
         Params:
             timestamp - a datetime.datetime object
             o2 - SpO2 percentage, represented as an integer
@@ -116,24 +118,32 @@ class MedViewFileWriter:
         try:
             o2 = int(o2)
         except:
-            raise ValueError(f"Invalid SpO2 value: '{o2}'")
+            logging.error(f"Invalid SpO2 value: '{o2}'")
+            return
 
         try:
             bpm = int(bpm)
         except:
-            raise ValueError(f"Invalid BPM value: '{bpm}'")
+            logging.error(f"Invalid BPM value: '{bpm}'")
+            return
 
-        line = struct.pack(
-            "@xxxBBBBBBBB",
-            int(timestamp.year - 2000),  # 2-digit year only
-            int(timestamp.month),
-            int(timestamp.day),
-            int(timestamp.hour),
-            int(timestamp.minute),
-            int(timestamp.second),
-            int(o2),
-            int(bpm),
-        )
+        try:
+            line = struct.pack(
+                "@xxxBBBBBBBB",
+                int(timestamp.year - 2000),  # 2-digit year only
+                int(timestamp.month),
+                int(timestamp.day),
+                int(timestamp.hour),
+                int(timestamp.minute),
+                int(timestamp.second),
+                int(o2),
+                int(bpm),
+            )
+        except (ValueError, TypeError, AttributeError):
+            # The timestamp could be missing a field, or one of the fields
+            # could be the wrong type or an invalid value.
+            logging.error(f"Invalid timestamp: '{timestamp}'")
+            return
 
         self.datfile.write(line)
         self.records += 1

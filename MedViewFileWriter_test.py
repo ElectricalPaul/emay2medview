@@ -14,6 +14,26 @@ import unittest
 import MedViewFileWriter
 
 
+class fake_timestamp:
+    def __init__(self):
+        self.year = 0
+        self.month = 0
+        self.day = 0
+        self.hour = 0
+        self.minute = 0
+        self.second = 0
+
+
+class incomplete_timestamp:
+    def __init__(self):
+        self.year = 0
+        self.month = 0
+        self.day = 0
+        # No 'hour' field
+        self.minute = 0
+        self.second = 0
+
+
 class MedViewFileWriterTests(unittest.TestCase):
     def test_empty(self):
         # Don't write any records, verify it has 0x00 0x00 0x00
@@ -100,6 +120,51 @@ class MedViewFileWriterTests(unittest.TestCase):
             # Put it back the way we found it
             dat.records = 0
             dat = None
+
+    def test_invalid_values(self):
+        with io.BytesIO() as datfile:
+            dat = MedViewFileWriter.MedViewFileWriter(datfile)
+            # Save the current offset in the file
+            tell = datfile.tell()
+
+            # Write records with invalid SpO2 values
+            for spo2 in [None, "", "abc"]:
+                dat.write_record(datetime.datetime(2024, 3, 3, 14, 42, 0), spo2, 82)
+            # Verify nothing was written
+            self.assertEqual(datfile.tell(), tell)
+
+            # Write records with invalid BPM values
+            for bpm in [None, "", "127.0.0.1"]:
+                dat.write_record(datetime.datetime(2024, 3, 3, 14, 42, 0), 97, bpm)
+
+            # Verify nothing was written
+            self.assertEqual(datfile.tell(), tell)
+
+    def test_datetime_invalid_values(self):
+        with io.BytesIO() as datfile:
+            dat = MedViewFileWriter.MedViewFileWriter(datfile)
+            # Save the current offset in the file
+            tell = datfile.tell()
+            # Make a timestamp with one of the values invalid
+            ts = fake_timestamp()
+            ts.year = None
+            dat.write_record(ts, 100, 100)
+
+            # Verify nothing was written
+            self.assertEqual(datfile.tell(), tell)
+
+    def test_datetime_missing_values(self):
+        with io.BytesIO() as datfile:
+            dat = MedViewFileWriter.MedViewFileWriter(datfile)
+            # Save the current offset in the file
+            tell = datfile.tell()
+            # Make a timestamp with one of the fields missing
+            ts = incomplete_timestamp()
+            ts.year = None
+            dat.write_record(ts, 100, 100)
+
+            # Verify nothing was written
+            self.assertEqual(datfile.tell(), tell)
 
 
 if __name__ == "__main__":
