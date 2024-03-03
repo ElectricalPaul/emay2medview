@@ -29,6 +29,10 @@ def process_emay_csv(input_filename):
         with open(output_filename, "wb") as datfile:
             with MedViewFileWriter.MedViewFileWriter(datfile) as medview:
                 for rec in emay:
+                    if not rec[1] or not rec[2]:
+                        logging.info(f"Missing data for time {rec[0]}, skip")
+                        continue
+
                     medview.write_record(rec[0], rec[1], rec[2])
 
 
