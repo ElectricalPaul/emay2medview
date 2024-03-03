@@ -37,18 +37,24 @@ class EmayFileReaderTests(unittest.TestCase):
         self.assertRaises(StopIteration, next, reader)
 
     def test_empty_fields(self):
-        # Neither SpO2 nor BPM can be empty
+        # If SpO2 or BPM are empty, the value is `None`
         csv = io.StringIO("Date,Time,SpO2(%),PR(bpm)\n2/26/2024,9:10:35 PM,93,\n")
         reader = EmayFileReader.EmayFileReader(csv)
-        self.assertRaises(StopIteration, next, reader)
+        row = next(reader)
+        self.assertEqual(row[1], 93)
+        self.assertIsNone(row[2], "PR(bpm) should be None")
 
         csv = io.StringIO("Date,Time,SpO2(%),PR(bpm)\n2/26/2024,9:10:36 PM,,\n")
         reader = EmayFileReader.EmayFileReader(csv)
-        self.assertRaises(StopIteration, next, reader)
+        row = next(reader)
+        self.assertIsNone(row[1], "SpO2(%) should be None")
+        self.assertIsNone(row[2], "PR(bpm) should be None")
 
         csv = io.StringIO("Date,Time,SpO2(%),PR(bpm)\n2/26/2024,9:10:36 PM,,83\n")
         reader = EmayFileReader.EmayFileReader(csv)
-        self.assertRaises(StopIteration, next, reader)
+        row = next(reader)
+        self.assertIsNone(row[1], "SpO2(%) should be None")
+        self.assertEqual(row[2], 83)
 
     def test_happy_path(self):
         csv = io.StringIO(

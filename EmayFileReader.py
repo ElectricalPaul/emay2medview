@@ -59,31 +59,40 @@ class EmayFileReader:
     def __next__(self):
         try:
             row = next(self.reader)
+        except TypeError:
+            raise StopIteration
+
+        try:
             date_and_time = row["Date"] + " " + row["Time"]
             timestamp = datetime.datetime.strptime(
                 date_and_time, "%m/%d/%Y %I:%M:%S %p"
             )
-            try:
-                o2 = int(row["SpO2(%)"])
-            except:
-                logging.error(
-                    f"Missing/empty/invalid SpO2(%) value line {self.reader.line_num}"
-                )
-                raise StopIteration
-
-            try:
-                bpm = int(row["PR(bpm)"])
-            except:
-                logging.error(
-                    f"Missing/empty PR(bpm) value line {self.reader.line_num}"
-                )
-                raise StopIteration
-
-            return (timestamp, o2, bpm)
-        except ValueError:
+        except (ValueError, AttributeError):
             logging.error(
                 f"Invalid date/time '{date_and_time}' on line {self.reader.line_num}"
             )
             raise StopIteration
-        except (TypeError, AttributeError):
+
+        try:
+            o2 = int(row["SpO2(%)"])
+        except ValueError:
+            # If the field is empty, `row["SpO2(%)"]` is `''`
+            # `int('')` raises ValueError
+            logging.warning(f"Empty/invalid SpO2(%) value line {self.reader.line_num}")
+            o2 = None
+        except TypeError:
+            # If the field is missing, `row["SpO2(%)"]` is `None`
+            # `int(None)` raises TypeError
+            logging.error(f"Missing SpO2(%) value line {self.reader.line_num}")
             raise StopIteration
+
+        try:
+            bpm = int(row["PR(bpm)"])
+        except ValueError:
+            logging.warning(f"Empty/invalid PR(bpm) value line {self.reader.line_num}")
+            bpm = None
+        except TypeError:
+            logging.error(f"Missing PR(bpm) value line {self.reader.line_num}")
+            raise StopIteration
+
+        return (timestamp, o2, bpm)
