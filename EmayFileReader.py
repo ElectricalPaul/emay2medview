@@ -43,6 +43,7 @@ import csv
 import datetime
 import logging
 import sys
+import FuzzyDateTimeParser
 
 
 class EmayFileReader:
@@ -63,13 +64,12 @@ class EmayFileReader:
             raise StopIteration
 
         try:
-            date_and_time = row["Date"] + " " + row["Time"]
-            timestamp = datetime.datetime.strptime(
-                date_and_time, "%m/%d/%Y %I:%M:%S %p"
-            )
+            timestamp = datetime.datetime.combine(
+                FuzzyDateTimeParser.FuzzyDateTimeParser.parse_date(row["Date"]),
+                FuzzyDateTimeParser.FuzzyDateTimeParser.parse_time(row["Time"]))
         except (ValueError, AttributeError):
             logging.error(
-                f"Invalid date/time '{date_and_time}' on line {self.reader.line_num}"
+                f"Invalid date/time \"{row['Date']} {row['Time']}\" on line {self.reader.line_num}"
             )
             raise StopIteration
 

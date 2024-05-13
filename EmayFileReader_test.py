@@ -76,6 +76,20 @@ class EmayFileReaderTests(unittest.TestCase):
 
         self.assertRaises(StopIteration, next, reader)
 
+    def test_iso8601_date_time(self):
+        """Users 'ST Dog' and 'capman' reported problems with ISO 8601 dates and times"""
+        csv = io.StringIO(
+            """Date,Time,SpO2(%),PR(bpm)
+2021/12/10,11:32:14,98,85
+"""
+        )
+        reader = EmayFileReader.EmayFileReader(csv)
+        row = next(reader)
+        self.assertEqual(row[0], datetime.datetime(2021, 12, 10, 11, 32, 14))
+        self.assertEqual(row[1], 98)
+        self.assertEqual(row[2], 85)
+
+        self.assertRaises(StopIteration, next, reader)
 
 if __name__ == "__main__":
     unittest.main()

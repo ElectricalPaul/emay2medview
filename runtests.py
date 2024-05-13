@@ -12,7 +12,7 @@ Run all unit tests
 import sys
 import unittest
 
-tests = ("EmayFileReader_test", "MedViewFileWriter_test")
+tests = ("EmayFileReader_test", "MedViewFileWriter_test", "FuzzyDateTimeParser_test")
 
 if __name__ == "__main__":
     for test in tests:
