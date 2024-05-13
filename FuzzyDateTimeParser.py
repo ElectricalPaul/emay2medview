@@ -96,6 +96,7 @@ class FuzzyDateTimeParser:
         """
         return re.sub("\D+", " ", date_str).strip()
 
+    @staticmethod
     def simplify_time_string(time_str):
         """Simplify time string by replacing all non-digits with a space, but save AM/PM
 
