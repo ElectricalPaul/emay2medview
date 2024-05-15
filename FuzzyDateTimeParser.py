@@ -105,7 +105,7 @@ class FuzzyDateTimeParser:
             the string with any non-digits replaced by a single space, no
             leading or trailing spaces, either
         """
-        return re.sub("\D+", " ", date_str).strip()
+        return re.sub(r"\D+", " ", date_str).strip()
 
     @staticmethod
     def simplify_time_string(time_str):
@@ -118,7 +118,7 @@ class FuzzyDateTimeParser:
             the string with any non-digits replaced by a single space, with any AM/PM
             preserved, no leading or trailing spaces, either
         """
-        return re.sub("[^APMapm\d]+", " ", time_str).strip()
+        return re.sub(r"[^APMapm\d]+", " ", time_str).strip()
 
     @staticmethod
     def parse_date(date_str):
