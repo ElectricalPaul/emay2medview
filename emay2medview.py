@@ -14,21 +14,48 @@ https://www.apneaboard.com/forums/Thread-python-file-converter-for-EMAY-sleep-pu
 
 import logging
 import os
-import sys
 import EmayFileReader
+import O2InsightProReader
 import MedViewFileWriter
+import click
 
 
-def process_emay_csv(input_filename):
-    basename, _ = os.path.splitext(input_filename)
-    output_filename = basename + ".dat"
-    print(f"Converting {input_filename} into {output_filename} ...")
+@click.command()
+@click.argument("csv", type=click.Path(exists=True))
+@click.option(
+    "--output-file",
+    "-o",
+    default=None,
+    help="Uses location and naming convention of the CSV file if not specified",
+)
+@click.option(
+    "--input-format",
+    "-f",
+    envvar="CSV_FORMAT",
+    type=click.Choice(["emay", "o2insight"]),
+    default="emay",
+    help="CSV file data format",
+)
+def main(**params):
+    input_filename = params["csv"]
+    input_format = params["input_format"]
+
+    if params["output_file"] is None:
+        basename, _ = os.path.splitext(input_filename)
+        output_filename = basename + ".dat"
+        print(f"Converting {input_filename} into {output_filename} ...")
+    else:
+        output_filename = params["output_file"]
 
     with open(input_filename, newline="") as csvfile:
-        emay = EmayFileReader.EmayFileReader(csvfile)
+        if input_format == "o2insight":
+            csv = O2InsightProReader.O2InsightProReader(csvfile)
+        else:
+            csv = EmayFileReader.EmayFileReader(csvfile)
+
         with open(output_filename, "wb") as datfile:
             with MedViewFileWriter.MedViewFileWriter(datfile) as medview:
-                for rec in emay:
+                for rec in csv:
                     if not rec[1] or not rec[2]:
                         logging.info(f"Missing data for time {rec[0]}, skip")
                         continue
@@ -36,6 +63,10 @@ def process_emay_csv(input_filename):
                     medview.write_record(rec[0], rec[1], rec[2])
 
 
+def o2insight2medview():
+    os.environ["CSV_FORMAT"] = "o2insight"
+    main()
+
+
 if __name__ == "__main__":
-    for filename in sys.argv[1:]:
-        process_emay_csv(filename)
+    main()
