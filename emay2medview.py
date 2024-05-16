@@ -36,9 +36,16 @@ import click
     default="emay",
     help="CSV file data format",
 )
+@click.option(
+    "--time-offset",
+    type=click.INT,
+    default=0,
+    help="Adjust times in the output data by this many seconds (positive or negative)",
+)
 def main(**params):
     input_filename = params["csv"]
     input_format = params["input_format"]
+    timeOffset = params["time_offset"]
 
     if params["output_file"] is None:
         basename, _ = os.path.splitext(input_filename)
@@ -54,7 +61,7 @@ def main(**params):
             csv = EmayFileReader.EmayFileReader(csvfile)
 
         with open(output_filename, "wb") as datfile:
-            with MedViewFileWriter.MedViewFileWriter(datfile) as medview:
+            with MedViewFileWriter.MedViewFileWriter(datfile, timeOffset) as medview:
                 for rec in csv:
                     if not rec[1] or not rec[2]:
                         logging.info(f"Missing data for time {rec[0]}, skip")
