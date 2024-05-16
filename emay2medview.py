@@ -18,6 +18,7 @@ import EmayFileReader
 import O2InsightProReader
 import MedViewFileWriter
 import click
+from tqdm import tqdm
 
 
 @click.command()
@@ -61,13 +62,31 @@ def main(**params):
             csv = EmayFileReader.EmayFileReader(csvfile)
 
         with open(output_filename, "wb") as datfile:
-            with MedViewFileWriter.MedViewFileWriter(datfile, timeOffset) as medview:
+            with MedViewFileWriter.MedViewFileWriter(
+                datfile, timeOffset
+            ) as medview, progress(description="Processing records") as bar:
                 for rec in csv:
                     if not rec[1] or not rec[2]:
                         logging.info(f"Missing data for time {rec[0]}, skip")
+                        bar.update()
                         continue
 
                     medview.write_record(rec[0], rec[1], rec[2])
+                    bar.update()
+
+
+def progress(description=None, max=0, unit=None, color=None, position=None, leave=True):
+    if unit is None:
+        unit = " records"
+    else:
+        unit = " {unit}".format(unit=unit)
+
+    bar = tqdm(unit=unit, total=max, colour=color, position=position, leave=leave)
+
+    if description is not None:
+        bar.set_description(description)
+
+    return bar
 
 
 def o2insight2medview():

@@ -16,6 +16,7 @@ setup(
     install_requires=[
         "Click",
         "click-option-group",
+        "tqdm",
     ],
     entry_points={
         "console_scripts": [
