@@ -15,7 +15,7 @@ Usage example:
 
 ```
 with open(output_filename, "wb") as datfile:
-    with MedViewFileWriter.MedViewFileWriter(datfile) as dat:
+    with MedViewFileWriter.MedViewFileWriter(datfile, timeOffset) as dat:
         # ...
         # [magic happens here, and now ts is a date and time,
         # and o2 and bpm have valid values]
@@ -54,15 +54,18 @@ https://www.apneaboard.com/forums/Thread-python-file-converter-for-EMAY-sleep-pu
 import logging
 import struct
 import unittest
+import datetime
 
 
 class MedViewFileWriter:
-    def __init__(self, datfile):
+    def __init__(self, datfile, timeOffset=0):
         # Keep track of the number of records written to output file.
         self.records = 0
         # File handle for the DAT file
         self.datfile = datfile
         self.write_dat_header()
+        # optional timestamp correction offset
+        self.timeOffset = timeOffset
 
     def __del__(self):
         self.update_dat_header()
@@ -126,6 +129,9 @@ class MedViewFileWriter:
         except:
             logging.error(f"Invalid BPM value: '{bpm}'")
             return
+
+        # Apply the time offset
+        timestamp += datetime.timedelta(seconds=self.timeOffset)
 
         try:
             line = struct.pack(

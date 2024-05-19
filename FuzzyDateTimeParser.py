@@ -35,6 +35,7 @@ import locale
 import os
 import re
 
+
 class FuzzyDateTimeParser:
     # Formats to try for parsing a date and a time
     date_formats = []
@@ -47,18 +48,28 @@ class FuzzyDateTimeParser:
     @staticmethod
     def init():
         """Initialize the array of date formats for parsing
-:was
-        Use `locale.nl_langinfo(locale.D_FMT)` to see if the day is first,
-        decide if "%d %m %Y" and "%d %m %y" comes first in the list, or
-        "%m %d %Y" and "%m %d %y" do. Also put the year-month-day format
-        in the list.
+        :was
+                Use `locale.nl_langinfo(locale.D_FMT)` to see if the day is first,
+                decide if "%d %m %Y" and "%d %m %y" comes first in the list, or
+                "%m %d %Y" and "%m %d %y" do. Also put the year-month-day format
+                in the list.
         """
         if FuzzyDateTimeParser.is_day_first(locale.nl_langinfo(locale.D_FMT)):
             FuzzyDateTimeParser.date_formats = [
-                "%d %m %Y", "%d %m %y", "%m %d %Y", "%m %d %y", "%Y %m %d"]
+                "%d %m %Y",
+                "%d %m %y",
+                "%m %d %Y",
+                "%m %d %y",
+                "%Y %m %d",
+            ]
         else:
             FuzzyDateTimeParser.date_formats = [
-                "%m %d %Y", "%m %d %y", "%Y %m %d", "%d %m %Y", "%d %m %y"]
+                "%m %d %Y",
+                "%m %d %y",
+                "%Y %m %d",
+                "%d %m %Y",
+                "%d %m %y",
+            ]
 
     @staticmethod
     def is_day_first(d_fmt):
@@ -71,9 +82,9 @@ class FuzzyDateTimeParser:
             True if the day comes before the month in the date string
         """
         for ch in d_fmt:
-            if ch == 'd' or ch == 'e':
+            if ch == "d" or ch == "e":
                 return True
-            if ch == 'm':
+            if ch == "m":
                 return False
 
         # Probably should have already found d/e or m, so IDK?
@@ -94,7 +105,7 @@ class FuzzyDateTimeParser:
             the string with any non-digits replaced by a single space, no
             leading or trailing spaces, either
         """
-        return re.sub("\D+", " ", date_str).strip()
+        return re.sub(r"\D+", " ", date_str).strip()
 
     @staticmethod
     def simplify_time_string(time_str):
@@ -107,7 +118,7 @@ class FuzzyDateTimeParser:
             the string with any non-digits replaced by a single space, with any AM/PM
             preserved, no leading or trailing spaces, either
         """
-        return re.sub("[^APMapm\d]+", " ", time_str).strip()
+        return re.sub(r"[^APMapm\d]+", " ", time_str).strip()
 
     @staticmethod
     def parse_date(date_str):
@@ -141,7 +152,9 @@ class FuzzyDateTimeParser:
                 d = datetime.datetime.strptime(simp, fmt)
                 # If we got here, parsing was successful, so move this format
                 # to thefront of the list and then return the parsed value
-                FuzzyDateTimeParser.date_formats.insert(0, FuzzyDateTimeParser.date_formats.pop(idx))
+                FuzzyDateTimeParser.date_formats.insert(
+                    0, FuzzyDateTimeParser.date_formats.pop(idx)
+                )
                 return d
             except ValueError:
                 pass
@@ -164,7 +177,9 @@ class FuzzyDateTimeParser:
         # First try to parse with user-supplied time format
         try:
             if FuzzyDateTimeParser.t_fmt is not None:
-                return datetime.datetime.strptime(time_str, FuzzyDateTimeParser.t_fmt).time()
+                return datetime.datetime.strptime(
+                    time_str, FuzzyDateTimeParser.t_fmt
+                ).time()
         except ValueError:
             pass
 
@@ -173,7 +188,9 @@ class FuzzyDateTimeParser:
         for idx, fmt in enumerate(FuzzyDateTimeParser.time_formats):
             try:
                 t = datetime.datetime.strptime(simp, fmt).time()
-                FuzzyDateTimeParser.time_formats.insert(0, FuzzyDateTimeParser.time_formats.pop(idx))
+                FuzzyDateTimeParser.time_formats.insert(
+                    0, FuzzyDateTimeParser.time_formats.pop(idx)
+                )
                 return t
             except ValueError:
                 pass
