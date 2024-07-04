@@ -130,10 +130,10 @@ class MedViewFileWriter:
             logging.error(f"Invalid BPM value: '{bpm}'")
             return
 
-        # Apply the time offset
-        timestamp += datetime.timedelta(seconds=self.timeOffset)
-
         try:
+            # Apply the time offset
+            timestamp += datetime.timedelta(seconds=self.timeOffset)
+
             line = struct.pack(
                 "@xxxBBBBBBBB",
                 int(timestamp.year - 2000),  # 2-digit year only
