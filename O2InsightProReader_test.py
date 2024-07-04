@@ -108,7 +108,7 @@ class O2InsightProReaderTests(unittest.TestCase):
 
         self.assertRaises(StopIteration, next, reader)
 
-def test_sensor_off(self):
+    def test_sensor_off(self):
         # When the device is unable to get a reading, like when the sensor
         # is off your finger, it records SpO2=255 and PR=65535
         csv = io.StringIO(
@@ -126,11 +126,26 @@ def test_sensor_off(self):
         self.assertEqual(row[1], 96)
         self.assertEqual(row[2], 54)
 
-        # Current behavior is to transparently skip rows with "sensor off" values
+        row = next(reader)
+        self.assertEqual(row[0], datetime.datetime(2024, 5, 22, 9, 25, 23))
+        self.assertIsNone(row[1], "SpO2(%) should be None")
+        self.assertIsNone(row[2], "PR(bpm) should be None")
+
+        row = next(reader)
+        self.assertEqual(row[0], datetime.datetime(2024, 5, 22, 9, 25, 27))
+        self.assertIsNone(row[1], "SpO2(%) should be None")
+        self.assertIsNone(row[2], "PR(bpm) should be None")
+
+        row = next(reader)
+        self.assertEqual(row[0], datetime.datetime(2024, 5, 22, 9, 25, 31))
+        self.assertIsNone(row[1], "SpO2(%) should be None")
+        self.assertIsNone(row[2], "PR(bpm) should be None")
+
         row = next(reader)
         self.assertEqual(row[0], datetime.datetime(2024, 5, 22, 9, 25, 35))
         self.assertEqual(row[1], 97)
         self.assertEqual(row[2], 57)
+
 
 if __name__ == "__main__":
     unittest.main()

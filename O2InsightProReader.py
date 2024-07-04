@@ -49,49 +49,47 @@ class O2InsightProReader:
         return self
 
     def __next__(self):
-        while True:
-            try:
-                row = next(self.reader)
-            except TypeError:
-                raise StopIteration
+        try:
+            row = next(self.reader)
+        except TypeError:
+            raise StopIteration
 
-            for timeFormat in self.timeFormats:
-                try:
-                    timestamp = datetime.datetime.strptime(row["Time"], timeFormat)
-                    break
-                except ValueError:
-                    pass
-            else:
-                logging.error(
-                    f"Invalid date/time \"{row['Time']}\" on line {self.reader.line_num}"
-                )
-                raise StopIteration
-
+        for timeFormat in self.timeFormats:
             try:
-                o2 = int(row["SpO2(%)"])
+                timestamp = datetime.datetime.strptime(row["Time"], timeFormat)
+                break
             except ValueError:
-                logging.warning(
-                    f"Empty/invalid SpO2(%) value line {self.reader.line_num}"
-                )
+                pass
+        else:
+            logging.error(
+                f"Invalid date/time \"{row['Time']}\" on line {self.reader.line_num}"
+            )
+            raise StopIteration
+
+        try:
+            o2 = int(row["SpO2(%)"])
+            # If the sensor is off, the device records 255 for SpO2
+            if o2 == 255:
                 o2 = None
-            except TypeError:
-                logging.error(f"Missing SpO2(%) value line {self.reader.line_num}")
-                raise StopIteration
+        except ValueError:
+            logging.warning(f"Empty/invalid SpO2(%) value line {self.reader.line_num}")
+            o2 = None
+        except TypeError:
+            logging.error(f"Missing SpO2(%) value line {self.reader.line_num}")
+            raise StopIteration
 
-            try:
-                bpm = int(row["Pulse Rate(bpm)"])
-            except ValueError:
-                logging.warning(
-                    f"Empty/invalid Pulse Rate(bpm) value line {self.reader.line_num}"
-                )
+        try:
+            bpm = int(row["Pulse Rate(bpm)"])
+            # If the sensor is off, the device records 65535 for PR
+            if bpm == 65535:
                 bpm = None
-            except TypeError:
-                logging.error(
-                    f"Missing Pulse Rate(bpm) value line {self.reader.line_num}"
-                )
-                raise StopIteration
+        except ValueError:
+            logging.warning(
+                f"Empty/invalid Pulse Rate(bpm) value line {self.reader.line_num}"
+            )
+            bpm = None
+        except TypeError:
+            logging.error(f"Missing Pulse Rate(bpm) value line {self.reader.line_num}")
+            raise StopIteration
 
-            # these records seem to exist when the device is finished with a collection
-            if o2 == 255 and bpm == 65535:
-                continue
-            return (timestamp, o2, bpm)
+        return (timestamp, o2, bpm)
