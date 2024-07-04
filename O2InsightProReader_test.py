@@ -108,6 +108,29 @@ class O2InsightProReaderTests(unittest.TestCase):
 
         self.assertRaises(StopIteration, next, reader)
 
+def test_sensor_off(self):
+        # When the device is unable to get a reading, like when the sensor
+        # is off your finger, it records SpO2=255 and PR=65535
+        csv = io.StringIO(
+            """Time,SpO2(%),Pulse Rate(bpm),Motion,SpO2 Reminder,PR Reminder,
+"09:25:19AM May 22, 2024",96,54,20,0,0,
+"09:25:23AM May 22, 2024",255,65535,1,0,0,
+"09:25:27AM May 22, 2024",255,65535,0,0,0,
+"09:25:31AM May 22, 2024",255,65535,14,0,0,
+"09:25:35AM May 22, 2024",97,57,0,0,0,
+"""
+        )
+        reader = O2InsightProReader.O2InsightProReader(csv)
+        row = next(reader)
+        self.assertEqual(row[0], datetime.datetime(2024, 5, 22, 9, 25, 19))
+        self.assertEqual(row[1], 96)
+        self.assertEqual(row[2], 54)
+
+        # Current behavior is to transparently skip rows with "sensor off" values
+        row = next(reader)
+        self.assertEqual(row[0], datetime.datetime(2024, 5, 22, 9, 25, 35))
+        self.assertEqual(row[1], 97)
+        self.assertEqual(row[2], 57)
 
 if __name__ == "__main__":
     unittest.main()
