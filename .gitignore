@@ -2,3 +2,6 @@ __pycache__
 build/
 *.egg-info/
 venv/
+DST/
+todo.txt
+*.code-workspace
