@@ -48,13 +48,27 @@ class FuzzyDateTimeParser:
     @staticmethod
     def init():
         """Initialize the array of date formats for parsing
-        :was
+
                 Use `locale.nl_langinfo(locale.D_FMT)` to see if the day is first,
                 decide if "%d %m %Y" and "%d %m %y" comes first in the list, or
                 "%m %d %Y" and "%m %d %y" do. Also put the year-month-day format
                 in the list.
+
+                In cases where locale.nl_langinfo is not available, use date.strftime
+                on an unambiguous date and then use a regex to replace the year,
+                month, and day in that string with the formatting characters like we
+                would see from locale.D_FMT.
         """
-        if FuzzyDateTimeParser.is_day_first(locale.nl_langinfo(locale.D_FMT)):
+        try:
+            date_format =  locale.nl_langinfo(locale.D_FMT)
+        except AttributeError:
+            from datetime import date
+            date_format = date(2025,12,31).strftime("%x")
+            date_format = re.sub(r'12', "%m", date_format);
+            date_format = re.sub(r'31', "%d", date_format);
+            date_format = re.sub(r'2025', "%Y", date_format);
+            date_format = re.sub(r'25', "%y", date_format);
+        if FuzzyDateTimeParser.is_day_first(date_format):
             FuzzyDateTimeParser.date_formats = [
                 "%d %m %Y",
                 "%d %m %y",
